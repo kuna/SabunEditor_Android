@@ -3,6 +3,12 @@ package com.kuna.sabuneditor_android.bms;
 import java.util.ArrayList;
 import java.util.List;
 
+/*
+ * TODO - REMOVE STOP and BPM (add to parser)
+ * TODO - parse & store #BGA information.
+ * TODO - store #IF~#ENDIF information successfully
+ */
+
 public class BMSData {
 	public int player;
 	public String title;
@@ -21,7 +27,10 @@ public class BMSData {
 	public double[] str_bpm = new double[1322];
 	public double[] str_stop = new double[1322];
 	public boolean[] LNObj = new boolean[1322];
-	public double[] length_beat = new double[1024];		// MAXIMUM_BEAT
+
+	public int[] beat_numerator = new int[1024];		// MAXIMUM_BEAT
+	public int[] beat_denominator = new int[1024];		// MAXIMUM_BEAT
+	
 	public List<BMSKeyData> bmsdata = new ArrayList<BMSKeyData>();	// MAXIMUM_OBJECT (Trans object+hit object+STOP+BPM)
 	public List<BMSKeyData> bgadata = new ArrayList<BMSKeyData>();	// BGA
 	public List<BMSKeyData> bgmdata = new ArrayList<BMSKeyData>();	// BGM
@@ -33,10 +42,11 @@ public class BMSData {
 	public String hash;
 	public String path;
 	public String dir;
+	public String preprocessCommand;
 	
+		
 	// We dont store LNType
 	// we always save LNTYPE 1 (with LNOBJ)
-	
 
 	public double getBeatFromTime(int millisec) {
 		double bpm = BPM;
@@ -51,26 +61,26 @@ public class BMSData {
 			
 			// Beat is effected by midi length ... check midi length
 			while (d.beat > (int)beat+1) {
-				newtime = time + ((int)beat+1-beat) * (1.0f/bpm*60*4) * 1000 * length_beat[(int)beat];	// millisec
+				newtime = time + ((int)beat+1-beat) * (1.0f/bpm*60*4) * 1000 * getBeatLength((int) beat);	// millisec
 				if (newtime >= millisec) {
-					return beat + (millisec-time)*(bpm/60000/4.0f)/length_beat[(int)beat];
+					return beat + (millisec-time)*(bpm/60000/4.0f)/getBeatLength((int) beat);
 				}
 				
 				time = newtime;
 				beat = (int)beat+1;
 			}
 			
-			if (d.key == 9) {	// STOP
+			if (d.isSTOPChannel()) {	// STOP
 				time += d.value * 1000;
 				if (time >= millisec)
 					return beat;
 				continue;
 			}
 			
-			if (d.key == 3 || d.key == 8) {	// BPM
-				newtime = time + (d.beat-beat) * (1.0f/bpm*60*4) * 1000 * length_beat[(int)beat];	// millisec
+			if (d.isBPMChannel() || d.isBPMExtChannel()) {	// BPM
+				newtime = time + (d.beat-beat) * (1.0f/bpm*60*4) * 1000 * getBeatLength((int) beat);	// millisec
 				if (newtime >= millisec) {
-					return beat + (millisec-time)*(bpm/60000/4.0f)/length_beat[(int)beat];
+					return beat + (millisec-time)*(bpm/60000/4.0f)/getBeatLength((int) beat);
 				}
 				
 				beat = d.beat;
@@ -101,16 +111,20 @@ public class BMSData {
 			// check midi length
 			while (d.beat >= (int)_beat+1) {
 				if ((int)_beat+1 > beat && beat > _beat) {
-					return _time + ((int)_beat+1-beat) * (1.0f/_bpm*60*4) * length_beat[(int)_beat];
+					return _time + ((int)_beat+1-beat) * (1.0f/_bpm*60) 
+							* 4 * getBeatNumerator((int) beat) / getBeatDenominator((int) beat);
 				}
-				_time += ((int)_beat+1-_beat) * (1.0f/_bpm*60*4) * length_beat[(int)_beat];
+				_time += ((int)_beat+1-_beat) * (1.0f/_bpm*60) 
+						* 4 * getBeatNumerator((int) beat) / getBeatDenominator((int) beat);
 				_beat = (int)_beat+1;
 			}
 			
 			if (d.beat > beat && beat > _beat) {
-				return _time + (beat - _beat) * (1.0f / _bpm * 60 * 4) * length_beat[(int)_beat];
+				return _time + (beat - _beat) * (1.0f / _bpm * 60) 
+						* 4 * getBeatNumerator((int) beat) / getBeatDenominator((int) beat);
 			}
-			_time += (d.beat - _beat) * (1.0f / _bpm * 60 * 4) * length_beat[(int)_beat];
+			_time += (d.beat - _beat) * (1.0f / _bpm * 60) 
+					* 4 * getBeatNumerator((int) beat) / getBeatDenominator((int) beat);
 			
 			if (d.key == 3 || d.key == 8 )	// BPM
 				_bpm = d.value;
@@ -142,9 +156,215 @@ public class BMSData {
 		return str_stop[val];
 	}
 	public String getBGA(int val) {
+		if (str_bg[val] == null)
+			return "";
 		return str_bg[val];
 	}
 	public String getWAV(int val) {
+		if (str_wav[val] == null)
+			return "";
 		return str_wav[val];
+	}
+	public void setBGA(int val, String s) {
+		str_bg[val] = s;
+	}
+	public void setWAV(int val, String s) {
+		str_wav[val] = s;
+	}
+
+	public int getBeatNumerator(int beat) {
+		if (beat_denominator[beat] == 0)
+			return 4;
+		else
+			return beat_numerator[beat];
+	}
+	public int getBeatDenominator(int beat) {
+		if (beat_denominator[beat] == 0)
+			return 4;
+		else
+			return beat_denominator[beat];
+	}
+
+	public void setNumeratorFit(BMSKeyData bkd, int fit) {
+		if (fit == 0)
+			return;
+		int divnum = 192 / fit;
+		bkd.numerator = bkd.numerator - (bkd.numerator % divnum);
+		bkd.beat = (int)(bkd.beat) + (double)bkd.numerator / (192 * getBeatNumerator((int) (bkd.beat)) / getBeatDenominator((int) (bkd.beat))); 
+	}
+	
+	public double getBeatLength(int beat) {
+		if (beat_denominator[beat] == 0)
+			return 1;	// default
+		return (double)beat_numerator[beat] / beat_denominator[beat];
+	}
+	
+
+	public double getNotePosition(int beatHeight, int beat, int numerator) {
+		int beatNum = 0;
+		int r = 0;
+		while (beatNum < beat) {
+			// calculate new sbeatNum
+			r += (int) (beatHeight * getBeatLength(beatNum));
+			beatNum++;
+		}
+		
+		r += beatHeight * getBeatLength(beatNum)
+				* numerator / (192 * getBeatNumerator(beatNum) / getBeatDenominator(beatNum));
+		return r;
+	}
+	
+	public double getNotePosition(int beatHeight, int beat, double decimal) {
+		int beatNum = 0;
+		int r = 0;
+		while (beatNum < beat) {
+			// calculate new sbeatNum
+			r += (int) (beatHeight * getBeatLength(beatNum));
+			beatNum++;
+		}
+		
+		r += beatHeight * getBeatLength(beatNum)
+				* decimal;
+		return r;
+	}
+	
+	public BMSKeyData getBeatFromPosition(int beatHeight, int sy) {
+		BMSKeyData bk = new BMSKeyData();
+		
+		int beatNum = 0;
+		int y = 0, by = 0;
+		while (y < sy) {
+			// calculate new sbeatNum
+			by = y;
+			y += (int) (beatHeight * getBeatLength(beatNum));
+			beatNum++;
+		}
+		
+		y = by;
+		beatNum--;
+		
+		double beat = beatNum;
+		beat += (double)(sy-y) / beatHeight / getBeatLength(beatNum);
+		
+		bk.beat = beat;
+		bk.numerator = (int)(
+				(beat % 1) * 192 / getBeatDenominator(beatNum) * getBeatNumerator(beatNum)
+				);
+		
+		return bk;
+	}
+	
+	public BMSKeyData getPairLN(BMSKeyData lnData) {
+		// get another LN pair
+		BMSKeyData LNPair = null;
+		boolean returnAtNext = false;
+		
+		for (BMSKeyData bkd: bmsdata) {
+			if (bkd.getChannel() != lnData.getChannel())
+				continue;
+			
+			if (returnAtNext)
+				return bkd;
+			
+			if (bkd == lnData) {
+				if (LNPair != null)
+					return LNPair;
+				else
+					returnAtNext = true;
+			}
+			
+			if (LNPair != null)
+				LNPair = null;
+			else
+				LNPair = bkd;
+		}
+		
+		return null;	// No matching LN pair found.
+	}
+	
+	public boolean isNoteAlreadyExists(int beat, int numerator, int channel, int layer) {
+		return (getNote(beat, numerator, channel, layer) != null);
+	}
+	
+	public BMSKeyData getNote(int beat, int numerator, int channel, int layer) {
+		if (channel == 1 /*BGM*/) {
+			for (BMSKeyData bkd: bgmdata) {
+				if ((int)bkd.beat == beat && bkd.numerator == numerator && bkd.getLayerNum() == layer)
+					return bkd;
+			}
+			
+			return null;
+		} else if (channel == 4 || channel == 6 || channel == 7) {
+			for (BMSKeyData bkd: bgadata) {
+				if ((int)bkd.beat == beat && bkd.numerator == numerator && bkd.getChannel() == channel)
+					return bkd;
+			}
+			
+			return null;
+		} else {
+			for (BMSKeyData bkd: bmsdata) {
+				if ((int)bkd.beat == beat && bkd.numerator == numerator && bkd.getChannel() == channel)
+					return bkd;
+			}
+			
+			return null;
+		}
+	}
+	
+	public boolean removeNote(int beat, int numerator, int channel, int layer) {
+		if (channel == 1 /*BGM*/) {
+			for (int i=0; i<bgmdata.size(); i++) {
+				BMSKeyData bkd = bgmdata.get(i);
+				if ((int)bkd.beat == beat && bkd.numerator == numerator && bkd.getLayerNum() == layer) {
+					bgmdata.remove(i);
+					return true;
+				}
+			}
+			return false;
+		} else if (channel == 4 || channel == 6 || channel == 7) {
+			for (int i=0; i<bgadata.size(); i++) {
+				BMSKeyData bkd = bgadata.get(i);
+				if ((int)bkd.beat == beat && bkd.numerator == numerator && bkd.getChannel() == channel) {
+					bgadata.remove(i);
+					return true;
+				}
+			}
+			return false;
+		} else {
+			for (int i=0; i<bmsdata.size(); i++) {
+				BMSKeyData bkd = bmsdata.get(i);
+				if ((int)bkd.beat == beat && bkd.numerator == numerator && bkd.getChannel() == channel) {
+					bmsdata.remove(i);
+					return true;
+				}
+			}
+			return false;
+		}
+	}
+	
+	public boolean removeNote(BMSKeyData bkd) {
+		for (int i=0; i<bmsdata.size(); i++) {
+			if (bmsdata.get(i) == bkd) {
+				bmsdata.remove(i);
+				return true;
+			}
+		}
+		for (int i=0; i<bgadata.size(); i++) {
+			if (bgadata.get(i) == bkd) {
+				bgadata.remove(i);
+				return true;
+			}
+		}
+		for (int i=0; i<bgmdata.size(); i++) {
+			if (bgmdata.get(i) == bkd) {
+				bgmdata.remove(i);
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	public void addNote(BMSKeyData bkd) {
+		bmsdata.add(bkd);
 	}
 }

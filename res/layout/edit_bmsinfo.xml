@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" >
+    <ScrollView
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+	android:layout_weight="1" >
+	    <LinearLayout
+	    android:layout_width="match_parent"
+	    android:layout_height="wrap_content"
+	    android:orientation="vertical">
+			<TextView 
+			    android:layout_width="wrap_content"
+			    android:layout_height="wrap_content"
+			    android:text="Title"/>
+	        <EditText
+	            android:id="@+id/tvTitle"
+	            android:layout_width="match_parent"
+	            android:layout_height="wrap_content"
+	            android:layout_marginBottom="20dp" >
+	        </EditText>
+	        
+			<TextView 
+			    android:layout_width="wrap_content"
+			    android:layout_height="wrap_content"
+			    android:text="Subtitle"/>
+	        <EditText
+	            android:id="@+id/tvSubtitle"
+	            android:layout_width="match_parent"
+	            android:layout_height="wrap_content"
+	            android:layout_marginBottom="20dp" >
+	        </EditText>
+	        
+			<TextView 
+			    android:layout_width="wrap_content"
+			    android:layout_height="wrap_content"
+			    android:text="Artist"/>
+	        <EditText
+	            android:id="@+id/tvArtist"
+	            android:layout_width="match_parent"
+	            android:layout_height="wrap_content"
+	            android:layout_marginBottom="20dp" >
+	        </EditText>
+
+			<TextView 
+			    android:layout_width="wrap_content"
+			    android:layout_height="wrap_content"
+			    android:text="Genre"/>
+	        <EditText
+	            android:id="@+id/tvGenre"
+	            android:layout_width="match_parent"
+	            android:layout_height="wrap_content"
+	            android:layout_marginBottom="20dp" >
+	        </EditText>
+
+			<TextView 
+			    android:layout_width="wrap_content"
+			    android:layout_height="wrap_content"
+			    android:text="Player\n(1): Player 1, (2): Player 1/2, (3): Double Play, (4): Player2 = Player1"/>
+	        <EditText
+	            android:id="@+id/tvPlayer"
+	            android:layout_width="match_parent"
+	            android:layout_height="wrap_content"
+	            android:ems="10"
+	            android:inputType="number"
+	            android:layout_marginBottom="20dp" >
+	        </EditText>
+
+			<TextView 
+			    android:layout_width="wrap_content"
+			    android:layout_height="wrap_content"
+			    android:text="BPM"/>
+	        <EditText
+	            android:id="@+id/tvBPM"
+	            android:layout_width="match_parent"
+	            android:layout_height="wrap_content"
+	            android:ems="10"
+	            android:inputType="number"
+	            android:layout_marginBottom="20dp" >
+	        </EditText>
+
+			<TextView 
+			    android:layout_width="wrap_content"
+			    android:layout_height="wrap_content"
+			    android:text="PlayLevel"/>
+	        <EditText
+	            android:id="@+id/tvPlaylevel"
+	            android:layout_width="match_parent"
+	            android:layout_height="wrap_content"
+	            android:ems="10"
+	            android:inputType="number"
+	            android:layout_marginBottom="20dp" >
+	        </EditText>
+
+			<TextView 
+			    android:layout_width="wrap_content"
+			    android:layout_height="wrap_content"
+			    android:text="Difficulty"/>
+	        <EditText
+	            android:id="@+id/tvDifficulty"
+	            android:layout_width="match_parent"
+	            android:layout_height="wrap_content"
+	            android:ems="10"
+	            android:inputType="number"
+	            android:layout_marginBottom="20dp" >
+	        </EditText>
+
+			<TextView 
+			    android:layout_width="wrap_content"
+			    android:layout_height="wrap_content"
+			    android:text="Rank\n(0): Very hard, (1): Hard, (2): Normal, (3): Easy"/>
+	        <EditText
+	            android:id="@+id/tvRank"
+	            android:layout_width="match_parent"
+	            android:layout_height="wrap_content"
+	            android:ems="10"
+	            android:inputType="number"
+	            android:layout_marginBottom="20dp" >
+	        </EditText>
+
+			<TextView 
+			    android:layout_width="wrap_content"
+			    android:layout_height="wrap_content"
+			    android:text="Total"/>
+	        <EditText
+	            android:id="@+id/tvTotal"
+	            android:layout_width="match_parent"
+	            android:layout_height="wrap_content"
+	            android:ems="10"
+	            android:inputType="number"
+	            android:layout_marginBottom="20dp" >
+	        </EditText>
+
+			<TextView 
+			    android:layout_width="wrap_content"
+			    android:layout_height="wrap_content"
+			    android:text="Stagefile"/>
+	        <EditText
+	            android:id="@+id/tvStagefile"
+	            android:layout_width="match_parent"
+	            android:layout_height="wrap_content"
+	            android:ems="10"
+	            android:inputType="number"
+	            android:layout_marginBottom="20dp" >
+	        </EditText>
+	    </LinearLayout>
+    </ScrollView>
+    
+    <LinearLayout 
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal">
+	    <Button 
+	        android:id="@+id/btnOK"
+		    android:layout_width="match_parent"
+		    android:layout_height="wrap_content"
+		    android:layout_weight="1"
+	        android:text="OK"/>
+	    <Button 
+	        android:id="@+id/btnCancel"
+		    android:layout_width="match_parent"
+		    android:layout_height="wrap_content"
+		    android:layout_weight="1"
+	        android:text="Cancel"/>
+        
+    </LinearLayout>
+
+</LinearLayout>

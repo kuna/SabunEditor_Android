@@ -1,23 +1,12 @@
 package com.kuna.sabuneditor_android.bms;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.math.BigInteger;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
-import java.util.regex.Pattern;
-
-import android.util.Log;
 
 public class BMSParser {
 	public static int BMS_LOCALE_NONE = 0;
@@ -25,7 +14,10 @@ public class BMSParser {
 	public static int BMS_LOCALE_KR = 2;
 
 	private static int LNType;
-	private static int[] LNprevVal = new int[1322];
+	private static int[] LNprevVal = new int[120];
+	private static BMSKeyData[] LNKey = new BMSKeyData[120];
+	private static int[] BGALayerCount;
+	
 	private static int BMS_PARSER_HEADER = 1;
 	private static int BMS_PARSER_MAINDATA = 2;
 	private static int BMS_PARSER_BGA = 3;
@@ -38,7 +30,7 @@ public class BMSParser {
 	private static int[] condition = new int[256];		// 0: read line, 1: ignore line, 2: executing command, 3: command already executed
 	
 	public static boolean LoadBMSFile(String path, BMSData bd) {
-		Log.i("BMSParser", "Loading BMS File ...");
+		BMSUtil.Log("BMSParser", "Loading BMS File ... " + path);
 		File f = new File(path);
 		int locale;
 		
@@ -53,11 +45,9 @@ public class BMSParser {
 	        buf.read(bytes, 0, bytes.length);
 	        buf.close();
 	    } catch (FileNotFoundException e) {
-	        // TODO Auto-generated catch block
-	    	Log.i("BMSParser", "File not found");
+	    	BMSUtil.Log("BMSParser", "File not found");
 	    	return false;
 	    } catch (IOException e) {
-	        // TODO Auto-generated catch block
 	        e.printStackTrace();
 	        return false;
 	    }
@@ -77,7 +67,7 @@ public class BMSParser {
 				data = new String(bytes, "CP949");
 			}
 	    } catch (UnsupportedEncodingException e) {
-	    	Log.i("BMSParser", "Unsupported Encoding Exception");
+	    	BMSUtil.Log("BMSParser", "Unsupported Encoding Exception");
 	    	return false;
 	    }
 		
@@ -93,8 +83,7 @@ public class BMSParser {
 	
 	public static boolean ParseBMSData(String data, BMSData bd) {
 		// init
-		for (int i=0; i<bd.length_beat.length; i++)
-			bd.length_beat[i] = 1;
+		BGALayerCount = new int[1322];
 		
 		bd.notecnt = 0;
 		bd.total = 0;
@@ -112,6 +101,10 @@ public class BMSParser {
 		bd.bgadata.clear();
 		
 		String[] lines = data.split("\r\n");
+
+		for (int i=0; i<lines.length; i++) {
+			PreProcessBMSLine(lines[i].trim(), bd);
+		}
 		
 		for (int i=0; i<lines.length; i++) {
 			ProcessBMSLine(lines[i].trim(), bd);
@@ -158,11 +151,14 @@ public class BMSParser {
 		if (bd.total == 0) {
 			bd.total = (int) (bd.notecnt*0.16f + 160);
 		}
-		
+
+		BMSUtil.Log("BMSParser", "Parse finished");
 		return true;
 	}
 	
-	private static void ProcessBMSLine(String line, BMSData bd) {
+	private static void ExecutePreProcessor(String line, BMSData bd) {
+		// this will modify BMSData
+		// TODO check this thing may executed layer
 		// preprocessor
 		if (line.toUpperCase().startsWith("#RANDOM") || line.toUpperCase().startsWith("#SETRANDOM")) {
 			String args[] = line.split(" ");
@@ -199,22 +195,21 @@ public class BMSParser {
 				return;
 		}
 		// preprocessor end
+	}
+	
+	private static void PreProcessBMSLine(String line, BMSData bd) {
+		// in this function, Metadata & midi length will parsed
+		// and preprocessor will be parsed
 		
-		if (line.compareTo("*---------------------- HEADER FIELD") == 0) {
-			BMSParseMode = BMS_PARSER_HEADER;
-			return;
-		}
-		if (line.compareTo("*---------------------- MAIN DATA FIELD") == 0) {
-			BMSParseMode = BMS_PARSER_MAINDATA;
-			return;
-		}
-		if (line.compareTo("*---------------------- BGA FIELD") == 0) {
-			BMSParseMode = BMS_PARSER_BGA;
-			return;
-		}
-		
-		if (BMSParseMode == BMS_PARSER_HEADER || BMSParseMode == BMS_PARSER_BGA) {
-			String[] args = line.split(" ", 2);
+		if (line.toUpperCase().startsWith("#RANDOM")
+				|| line.toUpperCase().startsWith("#SETRANDOM")
+				|| line.toUpperCase().startsWith("#IF")
+				|| line.toUpperCase().startsWith("#ELSEIF")
+				|| line.toUpperCase().startsWith("#ENDIF")) {
+			bd.preprocessCommand += line + "\n";
+		} else {
+			String[] args;
+			args = line.split(" ", 2);
 			if (args.length > 1) {
 				if (args[0].compareToIgnoreCase("#TITLE") == 0) {
 					bd.title = args[1];
@@ -259,184 +254,163 @@ public class BMSParser {
 					String[] pt = args[0].substring(4).split("[.]");
 					
 					BMSKeyData nData = new BMSKeyData();
-					nData.value = Double.parseDouble(args[1]);
+					nData.value = Double.parseDouble(args[1])/1000;
 					nData.key = 9;		// STOP Channel
 					nData.beat = Integer.parseInt(pt[0]) + (double)Integer.parseInt(pt[1])/1000;
 					bd.bmsdata.add(nData);
 				} else
 				if (args[0].toUpperCase().startsWith("#LNOBJ")) {
-					bd.LNObj[BMSUtil.HexToInt(args[1])] = true;
+					bd.LNObj[BMSUtil.ExtHexToInt(args[1])] = true;
 				} else
 				if (args[0].toUpperCase().startsWith("#BMP")) {
-					int index = BMSUtil.HexToInt(args[0].substring(4, 6));
+					int index = BMSUtil.ExtHexToInt(args[0].substring(4, 6));
 					bd.str_bg[index] = args[1];
 				} else
 				if (args[0].toUpperCase().startsWith("#WAV")) {
-					int index = BMSUtil.HexToInt(args[0].substring(4, 6));
+					int index = BMSUtil.ExtHexToInt(args[0].substring(4, 6));
 					bd.str_wav[index] = args[1];
 				} else
 				if (args[0].toUpperCase().startsWith("#BPM")) {
-					int index = BMSUtil.HexToInt(args[0].substring(4, 6));
+					int index = BMSUtil.ExtHexToInt(args[0].substring(4, 6));
 					bd.str_bpm[index] = Double.parseDouble(args[1]);
 				} else
 				if (args[0].toUpperCase().startsWith("#STOP")) {
-					int index = BMSUtil.HexToInt(args[0].substring(4, 6));
+					int index = BMSUtil.ExtHexToInt(args[0].substring(4, 6));
 					bd.str_stop[index] = Double.parseDouble(args[1]);
 				}
 			}
-		}
-		
-		if (BMSParseMode == BMS_PARSER_MAINDATA || BMSParseMode == BMS_PARSER_BGA) {
-			String[] args = line.split(":", 2);
+
+			args = line.split(":", 2);
 			if (args.length > 1) {
 				if (!BMSUtil.IsInteger(args[0].substring(1, 6))) return;
 				int beat = Integer.parseInt(args[0].substring(1, 4));
-				int channel = Integer.parseInt(args[0].substring(4, 6));
+				int channel = BMSUtil.HexToInt(args[0].substring(4, 6));	// channel is heximedical
 				
 				if (channel == 2) {
-					bd.length_beat[beat] = Double.parseDouble(args[1]);
-				} else {
-					int ncb = args[1].length();
-					for (int i=0; i<ncb/2; i++) {
-						String val_str = args[1].substring(i*2, i*2+2);
-						int val = BMSUtil.HexToInt(val_str);
-						if (val == 0) {
-							// ignore data 00
-							LNprevVal[channel] = 0;
-							continue;		
-						}
-
-						if (channel > 10 && channel < 20) bd.notecnt++;			// 1 Player's notecnt
-						if (channel > 20 && channel < 30) bd.notecnt++;			// 2 Player's notecnt
-						double nb = beat + (double)i/(double)ncb*2;
+					double length_beat = Double.parseDouble(args[1]);
+					if (length_beat == 0) {
+						BMSUtil.Log("BMSParser", "length_beat cannot be Zero, ignored.");
+					}
+					// TODO fix!
+					if (length_beat * 4 % 1 == 0) {
+						bd.beat_numerator[beat] = (int)(length_beat * 4);
+						bd.beat_denominator[beat] = 4;
+					} else if (length_beat * 8 % 1 == 0) {
+						bd.beat_numerator[beat] = (int)(length_beat * 8);
+						bd.beat_denominator[beat] = 8;
+					} else if (length_beat * 16 % 1 == 0) {
+						bd.beat_numerator[beat] = (int)(length_beat * 16);
+						bd.beat_denominator[beat] = 16;
+					} else if (length_beat * 32 % 1 == 0) {
+						bd.beat_numerator[beat] = (int)(length_beat * 32);
+						bd.beat_denominator[beat] = 32;
+					} else if (length_beat * 64 % 1 == 0) {
+						bd.beat_numerator[beat] = (int)(length_beat * 64);
+						bd.beat_denominator[beat] = 64;
+					}
+				}
+			}
+		}
+	}
 	
-						BMSKeyData nData = new BMSKeyData();
+	private static void ProcessBMSLine(String line, BMSData bd) {
+		/*
+		 * many BMS has not follow this rule,
+		 * so we're going to ignore it.
+		 * 
+		if (line.compareTo("*---------------------- HEADER FIELD") == 0) {
+			BMSParseMode = BMS_PARSER_HEADER;
+			return;
+		}
+		if (line.compareTo("*---------------------- MAIN DATA FIELD") == 0) {
+			BMSParseMode = BMS_PARSER_MAINDATA;
+			return;
+		}
+		if (line.compareTo("*---------------------- BGA FIELD") == 0) {
+			BMSParseMode = BMS_PARSER_BGA;
+			return;
+		}
+		*/
+
+		// in this function, we'll only parse note data.
+
+		String[] args;
+		args = line.split(":", 2);
+		if (args.length > 1) {
+			if (!BMSUtil.IsInteger(args[0].substring(1, 6))) return;
+			int beat = Integer.parseInt(args[0].substring(1, 4));
+			int channel = BMSUtil.HexToInt(args[0].substring(4, 6));	// channel is heximedical
+			
+			if (channel == 2) {
+				// ignore! we already did it in PreProcessBMSLine
+			} else {
+				if (channel == 1) {
+					// BGM
+					BGALayerCount[beat]++;
+				}
+				
+				int ncb = args[1].length();
+				for (int i=0; i<ncb/2; i++) {
+					String val_str = args[1].substring(i*2, i*2+2);
+					int val = BMSUtil.ExtHexToInt(val_str);
+					if (val == 0) {
+						// ignore data 00
+						LNprevVal[channel] = 0;
+						continue;		
+					}
+
+					double nb = beat + (double)i/(double)ncb*2;
+					BMSKeyData nData = new BMSKeyData();
+					nData.value = val;
+					nData.key = channel;
+					nData.beat = nb;
+					nData.numerator = i*((192*bd.getBeatNumerator(beat)/bd.getBeatDenominator(beat))/(ncb/2));
+					// beat numerator must proceed first!!
+					
+					if (nData.is1PChannel() || nData.is2PChannel() || nData.is1PLNChannel() || nData.is2PLNChannel())
+						bd.notecnt ++;
+					
+					
+					if (nData.isBGMChannel()) {
+						// BGM
+						nData.layernum = BGALayerCount[beat];
+						bd.bgmdata.add(nData);
+					} else if (nData.isBPMExtChannel()) {
+						nData.value = bd.getBPM(val);
+						nData.setBPMChannel();  // for ease
 						nData.value = val;
-						nData.key = channel;
-						nData.beat = nb;
-						
-						switch (channel) {
-						case 1:		// BGM
-							bd.bgmdata.add(nData);
-							break;
-						case 8:		// Extended BPM
-							nData.value = bd.getBPM(val);
-							bd.bmsdata.add(nData);
-							break;
-						case 9:		// STOP
-							nData.value = bd.getSTOP(val);
-							bd.bmsdata.add(nData);
-							break;
-						case 3:		// BPM
-							nData.value = Integer.parseInt(val_str, 16);
-							bd.bmsdata.add(nData);
-							break;
-						case 7:
-						case 6:
-						case 4:		// BGA
-							bd.bgadata.add(nData);
-							break;
-						case 11:	// 1 Player data
-						case 12:
-						case 13:
-						case 14:
-						case 15:
-						case 16:
-						case 18:
-						case 19:
-						case 21:	// 2 Player data
-						case 22:
-						case 23:
-						case 24:
-						case 25:
-						case 26:
-						case 28:
-						case 29:
-							// check LNOBJ command
-							if (bd.LNObj[val]) {
-								// if LNObj is true,
-								// find previous LN obj(unused) and set etime.
-								// if no previous LN obj found, then insert new one.
-								boolean foundObj = false;
-								for (int _i=bd.bmsdata.size()-1; _i>=0 ;_i--)
-								{
-									BMSKeyData oldData = bd.bmsdata.get(_i);
-									if (nData.key == oldData.key && oldData.ebeat == 0) {
-										oldData.ebeat = nData.ebeat;
-										oldData.evalue = nData.value;
-										foundObj = true;
-										break;
-									}
-								}
-								
-								if (!foundObj) {
-									bd.bmsdata.add(nData);
-								} else {
-									bd.notecnt--;	// LN needs 2 key data, so 1 discount to correct note number.
-								}
-							} else {
-								bd.bmsdata.add(nData);
-							}
-							break;
-						case 31:
-						case 32:
-						case 33:
-						case 34:
-						case 35:
-						case 36:
-						case 38:
-						case 39:
-						case 41:
-						case 42:
-						case 43:
-						case 44:
-						case 45:
-						case 46:
-						case 48:
-						case 49:
-							// auto key sound(bg)
-							bd.bmsdata.add(nData);
-							break;
-						case 51:
-						case 52:
-						case 53:
-						case 54:
-						case 55:
-						case 56:
-						case 58:
-						case 59:
-						case 61:
-						case 62:
-						case 63:
-						case 64:
-						case 65:
-						case 66:
-						case 68:
-						case 69:
-							// long note (LNTYPE)
-							// find previous LN obj and set etime.
+						bd.bmsdata.add(nData);
+					} else if (nData.isSTOPChannel()) {
+						nData.value = bd.getSTOP(val);
+						nData.value = val;
+						bd.bmsdata.add(nData);
+					} else if (nData.isBPMChannel()) {
+						nData.value = Integer.parseInt(val_str, 16);
+						bd.bmsdata.add(nData);
+					} else if (nData.isBGAChannel() || nData.isBGALayerChannel() || nData.isPoorChannel()) {
+						// BGA
+						bd.bgadata.add(nData);
+					} else if (nData.is1PChannel() || nData.is2PChannel()) {
+						// check LNOBJ command
+						if (bd.LNObj[val]) {
+							// if LNObj is true,
+							// find previous LN obj(unused) and set etime.
 							// if no previous LN obj found, then insert new one.
+							if (nData.is1PChannel())
+								nData.set1PLNKey(nData.getKeyNum());
+							if (nData.is2PChannel())
+								nData.set2PLNKey(nData.getKeyNum());
 							boolean foundObj = false;
 							for (int _i=bd.bmsdata.size()-1; _i>=0 ;_i--)
 							{
-								if (LNType == 2 && nData.key != LNprevVal[channel])
-									break;	// LNTYPE 2: create new keydata when not continuous
-								
 								BMSKeyData oldData = bd.bmsdata.get(_i);
+								//if (nData.key == oldData.key && oldData.ebeat == 0) {
 								if (nData.key == oldData.key) {
-									if (LNType == 1 && oldData.ebeat == 0) {
-										// LNTYPE 1: only uses clean one
-										oldData.ebeat = nData.ebeat;
-										oldData.evalue = nData.value;
-										foundObj = true;
-										break;
-									} else if (LNType == 2) {
-										// LNTYPE 2: able to use dirty one when continuous.
-										oldData.ebeat = nData.ebeat;
-										oldData.evalue = nData.value;
-										foundObj = true;
-										break;
-									}
+									//oldData.ebeat = nData.ebeat;
+									//oldData.evalue = nData.value;
+									bd.bmsdata.add(nData);
+									foundObj = true;
+									break;
 								}
 							}
 							
@@ -445,15 +419,59 @@ public class BMSParser {
 							} else {
 								bd.notecnt--;	// LN needs 2 key data, so 1 discount to correct note number.
 							}
-							break;
+						} else {
+							bd.bmsdata.add(nData);
+						}
+					} else if (nData.is1PTransChannel() || nData.is2PTransChannel()) {
+						// transparent key sound
+						bd.bmsdata.add(nData);
+					} else if (nData.is1PLNChannel() || nData.is2PLNChannel()) {
+						// long note (LNTYPE)
+						// find previous LN obj and set etime.
+						// if no previous LN obj found, then insert new one.
+						boolean foundObj = false;
+						for (int _i=bd.bmsdata.size()-1; _i>=0 ;_i--)
+						{
+							if (LNType == 2 && nData.key != LNprevVal[channel])
+								break;	// LNTYPE 2: create new keydata when not continuous
+							
+							BMSKeyData oldData = bd.bmsdata.get(_i);
+							if (nData.key == oldData.key) {
+								//if (LNType == 1 && oldData.ebeat == 0) {
+								if (LNType == 1) {
+									// LNTYPE 1: only uses clean one
+									//oldData.ebeat = nData.ebeat;
+									//oldData.evalue = nData.value;
+									bd.bmsdata.add(nData);
+									foundObj = true;
+									break;
+								} else if (LNType == 2) {
+									// LNTYPE 2: able to use dirty one when continuous.
+									//oldData.ebeat = nData.ebeat;
+									//oldData.evalue = nData.value;
+									if (LNKey[channel] != oldData)
+										bd.bmsdata.remove(_i);
+									bd.bmsdata.add(nData);
+									foundObj = true;
+									break;
+								}
+							}
 						}
 						
-						// save prev val for LNTYPE 2
-						if (channel > 50 && channel< 70) {
-							LNprevVal[channel] = val;
+						if (!foundObj) {
+							bd.bmsdata.add(nData);
+							LNKey[channel] = nData;
 						} else {
-							LNprevVal[channel] = 0;
+							bd.notecnt--;	// LN needs 2 key data, so 1 discount to correct note number.
 						}
+					}
+					
+					
+					// save prev val for LNTYPE 2
+					if (nData.is1PLNChannel() || nData.is2PLNChannel()) {
+						LNprevVal[channel] = val;
+					} else {
+						LNprevVal[channel] = 0;
 					}
 				}
 			}
@@ -471,11 +489,11 @@ public class BMSParser {
 			
 			// check midi length
 			while (d.beat >= (int)_beat+1) {
-				_time += ((int)_beat+1-_beat) * (1.0f/_bpm*60*4) * bd.length_beat[(int)_beat];
+				_time += ((int)_beat+1-_beat) * (1.0f/_bpm*60*4) * bd.getBeatLength((int)_beat);
 				_beat = (int)_beat+1;
 			}
 			
-			_time += (d.beat - _beat) * (1.0f / _bpm * 60 * 4) * bd.length_beat[(int)_beat];
+			_time += (d.beat - _beat) * (1.0f / _bpm * 60 * 4) * bd.getBeatLength((int)_beat);
 			d.time = _time*1000;	// millisecond
 			
 			if (d.key == 3 || d.key == 8 )	// BPM
@@ -490,69 +508,6 @@ public class BMSParser {
 		
 		
 		// LN note time
-	}
-	
-	public static boolean SaveBMSFile(String path, BMSData bd) {
-		String data;
-		
-		// add metadata
-		data = "";
-		
-		// add keydata (need to sort first by beat -> key)
-		boolean channels[] = new boolean[1322];
-		int be=1, is=0, ie=0;
-		for (int i=0; i<bd.bmsdata.size(); i++) {
-			BMSKeyData bkey = bd.bmsdata.get(i);
-			if (bkey.beat > be) {
-				ie = i-1;
-				data += GetBeatString(bd, is, ie, be-1);
-				is = ie+1;
-				be++;
-			}
-		}
-		
-		return true;
-	}
-
-	private static String GetBeatString(BMSData bd, int is, int ie, int beat) {
-		String[] ret = new String[1322];
-		
-		// get Beat string from BMSData
-		for (int i=is; i<=ie; i++) {
-			BMSKeyData bkey = bd.bmsdata.get(i);
-			int numerator = GetBeatFraction(bkey.beat)[0];
-			int channel = bkey.key;
-			if (ret[channel] == null)
-				ret[channel] = "";
-			
-			if (numerator == 0) continue;
-			
-			for (int j=0; j<ret[channel].length()/2-numerator; j++) {
-				ret[channel] += "00";
-			}
-			
-			ret[channel] += BMSUtil.IntToHex((int)bkey.value);
-		}
-		
-		// return beat string
-		String res = "";
-		for (int i=0; i<1322; i++) {
-			if (ret[i] == null) continue;
-			res += "#" + String.format("%03d", beat) + String.format("%02X", i);
-			res += ret[i] + "\n";
-		}
-		return res;
-	}
-	
-	private static int[] GetBeatFraction(double beat) {
-		for (int i=1; i<=128; i++) {
-			if (beat*i % 1 == 0) {
-				return new int[] {(int)(beat*i), i};
-			}
-		}
-		
-		// 128 넘으면? 그냥 없는 걸로.
-		return new int[]{0,0};
 	}
 	
 	/*

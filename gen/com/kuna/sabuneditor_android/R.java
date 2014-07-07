@@ -22,16 +22,54 @@ public final class R {
     }
     public static final class drawable {
         public static final int ic_launcher=0x7f020000;
+        public static final int mainicon=0x7f020001;
+        public static final int notes=0x7f020002;
     }
     public static final class id {
-        public static final int action_settings=0x7f080004;
-        public static final int beditinfo=0x7f080001;
-        public static final int beditnote=0x7f080002;
-        public static final int bload=0x7f080000;
-        public static final int bsave=0x7f080003;
+        public static final int action_settings=0x7f080026;
+        public static final int btnBMP=0x7f08001e;
+        public static final int btnBeat16=0x7f080021;
+        public static final int btnBeat32=0x7f080022;
+        public static final int btnBeat4=0x7f08001f;
+        public static final int btnBeat64=0x7f080023;
+        public static final int btnBeat8=0x7f080020;
+        public static final int btnBeatFree=0x7f080024;
+        public static final int btnCancel=0x7f08000c;
+        public static final int btnDelete=0x7f080016;
+        public static final int btnFileInfo=0x7f080018;
+        public static final int btnMove=0x7f080013;
+        public static final int btnOK=0x7f08000b;
+        public static final int btnPaste=0x7f080017;
+        public static final int btnPreview=0x7f080019;
+        public static final int btnRedo=0x7f080012;
+        public static final int btnSelect=0x7f080014;
+        public static final int btnUndo=0x7f080011;
+        public static final int btnWAV=0x7f08001d;
+        public static final int btnWrite=0x7f080015;
+        public static final int btnload=0x7f08000f;
+        public static final int btnsave=0x7f080010;
+        public static final int editlayout=0x7f080025;
+        public static final int editlvlayout=0x7f08001a;
+        public static final int editoptionlayout=0x7f08000e;
+        public static final int lvelement=0x7f08001c;
+        public static final int name=0x7f08000d;
+        public static final int tvArtist=0x7f080002;
+        public static final int tvBPM=0x7f080005;
+        public static final int tvDifficulty=0x7f080007;
+        public static final int tvGenre=0x7f080003;
+        public static final int tvNote=0x7f08001b;
+        public static final int tvPlayer=0x7f080004;
+        public static final int tvPlaylevel=0x7f080006;
+        public static final int tvRank=0x7f080008;
+        public static final int tvStagefile=0x7f08000a;
+        public static final int tvSubtitle=0x7f080001;
+        public static final int tvTitle=0x7f080000;
+        public static final int tvTotal=0x7f080009;
     }
     public static final class layout {
-        public static final int activity_open=0x7f030000;
+        public static final int edit_bmsinfo=0x7f030000;
+        public static final int editlv_item=0x7f030001;
+        public static final int editview=0x7f030002;
     }
     public static final class menu {
         public static final int open=0x7f070000;
