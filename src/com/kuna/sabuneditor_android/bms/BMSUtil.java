@@ -83,4 +83,26 @@ public class BMSUtil {
 		b.value = bkd.value;
 		return b;
 	}
+	
+	public static List<BMSKeyData> ExtractChannel(List<BMSKeyData> data, int channel) {
+		ArrayList<BMSKeyData> r = new ArrayList<BMSKeyData>();
+		for (BMSKeyData b: data) {
+			if (b.getChannel() == channel) {
+				r.add(b);
+			}
+		}
+		
+		return r;
+	}
+	
+	public static List<BMSKeyData> ExtractLayer(List<BMSKeyData> data, int layer) {
+		ArrayList<BMSKeyData> r = new ArrayList<BMSKeyData>();
+		for (BMSKeyData b: data) {
+			if (b.getLayerNum() == layer) {
+				r.add(b);
+			}
+		}
+		
+		return r;
+	}
 }

@@ -162,6 +162,8 @@ public class EditView extends View {
 						BMSKeyData _bkd = Program.bmsdata.getBeatFromPosition(sizeOfBeat, 
 								(int)Program.bmsdata.getNotePosition(sizeOfBeat, (int)bkd.getBeat(), bkd.getNumerator()) - moveY);
 						bkd.setBeat(_bkd.getBeat(), Program.bmsdata);
+						bkd.setPosY( 
+								(int)Program.bmsdata.getNotePosition(100, (int)bkd.getBeat(), bkd.getBeat()%1) );
 						//bkd.setBeat(bkd.getBeat() + (double)-moveY/sizeOfBeat, Program.bmsdata); OLD VERSION
 					}
 					EditHistory.AddHistory(SelectBMSKeyData.selectData, EditHistory.ACTION_ADD);
@@ -251,6 +253,8 @@ public class EditView extends View {
 				
 				// set numerator
 				Program.bmsdata.setNumeratorFit(EditViewNote.ghostNote, EditActivity.editBeat);
+				EditViewNote.ghostNote.setPosY( 
+						(int)Program.bmsdata.getNotePosition(100, (int)EditViewNote.ghostNote.getBeat(), EditViewNote.ghostNote.getBeat()%1) );
 				
 				//Log.i("DATA", String.format("%d, %d, %f", (int) (ScrollY+(viewHeight - y)), EditViewNote.ghostNote.getNumerator(), EditViewNote.ghostNote.getBeat()));
 				this.postInvalidate();

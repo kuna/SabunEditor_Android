@@ -5,3 +5,4 @@ SabunEditor for Android
 채보 관찰이나 소소한 수정 혹은 키음 관찰에 더 적합할지도.
 
 * 140708 - first release
+* 140708 - ExtBPM bug fixed, Very big drawing speed & note position precision increase

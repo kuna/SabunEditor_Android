@@ -13,6 +13,8 @@ public class BMSKeyData implements Comparable<BMSKeyData> {
 	double value;
 	double time;
 	int layernum;	// used such as BGM
+	
+	double posy;
 	int attr;
 	
 	public double getBeat() {
@@ -44,6 +46,18 @@ public class BMSKeyData implements Comparable<BMSKeyData> {
 	
 	public void setValue(int val) {
 		value = val;
+	}
+	
+	public void setPosY(double val) {
+		posy = val;
+	}
+	
+	public double getPosY()  {
+		return posy;
+	}
+	
+	public int getPosY(double precision)  {
+		return (int)(posy*precision);
 	}
 	
 	public void set1PKey(int val) { // 1~7: normal key, 8:SC

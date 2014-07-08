@@ -167,9 +167,8 @@ public class EditViewNote {
 		}
 		
 		int px = getPositionX(col) + x;
-		int py = (int) Program.bmsdata.getNotePosition(EditView.sizeOfBeat, (int)bkd.getBeat(), bkd.getNumerator());
+		int py = bkd.getPosY(EditView.sizeOfBeat / 100.0);//(int) Program.bmsdata.getNotePosition(EditView.sizeOfBeat, (int)bkd.getBeat(), bkd.getNumerator());
 		py = EditView.viewHeight - py + y;
-		//Log.i("TEST", String.format("%d", py));
 		
 		if (px < -scolumn || px > EditView.viewWidth || py > EditView.viewHeight+noteHeight || py < 0)
 			return;

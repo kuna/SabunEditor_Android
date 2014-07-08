@@ -378,7 +378,7 @@ public class BMSParser {
 					} else if (nData.isBPMExtChannel()) {
 						nData.value = bd.getBPM(val);
 						nData.setBPMChannel();  // for ease
-						nData.value = val;
+						//nData.value = val;
 						bd.bmsdata.add(nData);
 					} else if (nData.isSTOPChannel()) {
 						nData.value = bd.getSTOP(val);

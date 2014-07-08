@@ -199,13 +199,12 @@ public class BMSData {
 		return (double)beat_numerator[beat] / beat_denominator[beat];
 	}
 	
-
 	public double getNotePosition(int beatHeight, int beat, int numerator) {
 		int beatNum = 0;
-		int r = 0;
+		double r = 0;
 		while (beatNum < beat) {
 			// calculate new sbeatNum
-			r += (int) (beatHeight * getBeatLength(beatNum));
+			r += beatHeight * getBeatLength(beatNum);
 			beatNum++;
 		}
 		
@@ -216,16 +215,63 @@ public class BMSData {
 	
 	public double getNotePosition(int beatHeight, int beat, double decimal) {
 		int beatNum = 0;
-		int r = 0;
+		double r = 0;
 		while (beatNum < beat) {
 			// calculate new sbeatNum
-			r += (int) (beatHeight * getBeatLength(beatNum));
+			r += beatHeight * getBeatLength(beatNum);
 			beatNum++;
 		}
 		
 		r += beatHeight * getBeatLength(beatNum)
 				* decimal;
 		return r;
+	}
+
+	
+	public double getNotePositionWithBPM(int beatHeight, List<BMSKeyData> bpmarr, double b) {
+		// may need lots of performance
+		int beat = (int)b;
+		double decimal = b;
+		double nbpm = BPM;
+		
+		int beatNum = 0;
+		double beatDecimal = 0;
+		int r = 0;
+		for (BMSKeyData bpm: bpmarr) {
+			while (beatNum < bpm.getBeat() && beatNum < beat) {
+				r += beatHeight * getBeatLength(beatNum) * (1-beatDecimal) * nbpm;
+				beatNum++;
+				beatDecimal = 0;
+			}
+			if (beatNum == beat)
+				break;
+			
+			beatDecimal = bpm.getValue() % 1;
+			r += beatHeight * getBeatLength(beatNum) * beatDecimal * nbpm;
+			nbpm = bpm.getValue();
+		}
+		
+		// calculate left beat
+		while (beatNum < beat) {
+			r += beatHeight * getBeatLength(beatNum) * nbpm;
+			beatNum++;
+			beatDecimal = 0;
+		}
+		r += beatHeight * getBeatLength(beatNum) * nbpm * decimal;
+		return r;
+	}
+	
+	public void fillNotePosition(List<BMSKeyData> arr, int beatHeight, boolean considerBPM) {
+		if (!considerBPM) {
+			for (BMSKeyData bkd: arr) {
+				bkd.setPosY( getNotePosition(beatHeight, (int)bkd.getBeat(), bkd.getBeat()%1) );
+			}
+		} else {
+			List<BMSKeyData> bpmarr = BMSUtil.ExtractChannel(bmsdata, 3);	// BPM channel
+			for (BMSKeyData bkd: arr) {
+				bkd.setPosY( getNotePositionWithBPM(beatHeight, bpmarr, bkd.getBeat()) );
+			}
+		}
 	}
 	
 	public BMSKeyData getBeatFromPosition(int beatHeight, int sy) {

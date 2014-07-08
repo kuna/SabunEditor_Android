@@ -310,8 +310,18 @@ public class EditActivity extends Activity {
 			public void run() {
 				LoadingDialog.showDialog(c, "Loading BMS ...", "please wait");
 
+				// load file
 				BMSParser.LoadBMSFile(path, Program.bmsdata);
+				
+				// fill posY data
+				Program.bmsdata.fillNotePosition( Program.bmsdata.bmsdata, 100, false);
+				Program.bmsdata.fillNotePosition( Program.bmsdata.bgadata, 100, false);
+				Program.bmsdata.fillNotePosition( Program.bmsdata.bgmdata, 100, false);
+				
+				// clear history
 				EditHistory.initHistory();
+				
+				// sleep for prevent LoadingDialog locking
 				try {
 					Thread.sleep(500);
 				} catch (InterruptedException e) {
@@ -344,7 +354,10 @@ public class EditActivity extends Activity {
 			public void run() {
 				LoadingDialog.showDialog(c, "Saving BMS ...", "please wait");
 
+				// save BMS file
 				BMSWriter.SaveBMSFile(path, Program.bmsdata);
+				
+				// sleep for prevent LoadingDialog locking
 				try {
 					Thread.sleep(500);
 				} catch (InterruptedException e) {

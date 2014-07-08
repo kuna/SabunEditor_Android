@@ -3,6 +3,7 @@ package com.kuna.sabuneditor_android.bms;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 /*
  * *** CAUTION ***
@@ -24,7 +25,7 @@ public class BMSWriter {
 		String data = "";
 		BPMs = new ArrayList<Double>();
 		STOPs = new ArrayList<Double>();
-		ArrayList<BMSKeyData> tmp = new ArrayList<BMSKeyData>();
+		List<BMSKeyData> tmp;
 		int beat = 1;
 		int i= 0;
 
@@ -40,11 +41,11 @@ public class BMSWriter {
 
 		// scan & convert BPM / STOP
 		BMSUtil.Log("BMSWriter", "scanning BPM/STOP information...");
-		tmp = ExtractChannel(datas, 3);	// BPM
+		tmp = BMSUtil.ExtractChannel(datas, 3);	// BPM
 		for (BMSKeyData bkd: tmp) {
 			bkd.value = getArrayIndex(BPMs, bkd.value);
 		}
-		tmp = ExtractChannel(datas, 9);	// STOP
+		tmp = BMSUtil.ExtractChannel(datas, 9);	// STOP
 		for (BMSKeyData bkd: tmp) {
 			if (bkd.getNumerator() == 0) continue;
 			bkd.value = getArrayIndex(STOPs, bkd.value);
@@ -69,7 +70,7 @@ public class BMSWriter {
 		data += MetaData("#STAGEFILE", bd.title);
 		data += MetaData("#LNTYPE", "1");
 		// process STP - channel 9 with NO NUMERATOR
-		tmp = ExtractChannel(datas, 9);
+		tmp = BMSUtil.ExtractChannel(datas, 9);
 		for (BMSKeyData bkd: tmp) {
 			if (bkd.getNumerator() == 0) {
 				data += MetaData("#STP"+String.format("%03.03f", bkd.getBeat()), (int)(bkd.value*1000));
@@ -166,7 +167,7 @@ public class BMSWriter {
 	}
 	
 	// MUST IN SAME BEAT!
-	private static String ProcessChannels(ArrayList<BMSKeyData> datas) {
+	private static String ProcessChannels(List<BMSKeyData> datas) {
 		if (datas.size() <= 0)
 			return "";
 		
@@ -174,12 +175,12 @@ public class BMSWriter {
 		BMSKeyData bkd_sample = datas.get(0);
 		
 		// BGMs FIRST
-		ArrayList<BMSKeyData> tmp;
-		tmp = ExtractChannel(datas, 1);
+		List<BMSKeyData> tmp;
+		tmp = BMSUtil.ExtractChannel(datas, 1);
 		int lcnt = 1;
 		for (int i=1; i<=32; i++) {
-			ArrayList<BMSKeyData> t;
-			t = ExtractLayer(tmp, i);
+			List<BMSKeyData> t;
+			t = BMSUtil.ExtractLayer(tmp, i);
 			if (t.size() > 0) {
 				while (lcnt < i) {
 					// fill empty layer
@@ -195,7 +196,7 @@ public class BMSWriter {
 		
 		// other layers (STOP / BPM must need to check whether ....)
 		for (int i=2; i<=120; i++) {
-			tmp = ExtractChannel(datas, i);
+			tmp = BMSUtil.ExtractChannel(datas, i);
 			String s = GetBeatString(tmp);
 			if (s != null)
 				r += s + "\n";
@@ -204,31 +205,9 @@ public class BMSWriter {
 		return r;
 	}
 	
-	private static ArrayList<BMSKeyData> ExtractChannel(ArrayList<BMSKeyData> data, int channel) {
-		ArrayList<BMSKeyData> r = new ArrayList<BMSKeyData>();
-		for (BMSKeyData b: data) {
-			if (b.getChannel() == channel) {
-				r.add(b);
-			}
-		}
-		
-		return r;
-	}
-	
-	private static ArrayList<BMSKeyData> ExtractLayer(ArrayList<BMSKeyData> data, int layer) {
-		ArrayList<BMSKeyData> r = new ArrayList<BMSKeyData>();
-		for (BMSKeyData b: data) {
-			if (b.getLayerNum() == layer) {
-				r.add(b);
-			}
-		}
-		
-		return r;
-	}
-	
 	
 	// MUST IN SAME CHANNEL, SAME BEAT!
-	private static String GetBeatString(ArrayList<BMSKeyData> datas) {
+	private static String GetBeatString(List<BMSKeyData> datas) {
 		if (datas == null || datas.size() <= 0)
 			return null;
 		
