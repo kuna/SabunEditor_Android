@@ -6,3 +6,4 @@ SabunEditor for Android
 
 * 140708 - first release
 * 140708 - ExtBPM bug fixed, Very big drawing speed & note position precision increase
+* 140712 - BMS engine update, Rhythmus emulator now works (you can get Rhythmus from [here](https://github.com/kuna/Rhythmus_java))

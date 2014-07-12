@@ -72,6 +72,15 @@ public class EditActivity extends Activity {
 		
 		// initalize components
 		Button b;
+		b = (Button)findViewById(R.id.btnNew);
+		b.setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				Program.bmsdata = new BMSData();
+				ev.postInvalidate();
+			}
+		});
+		
 		b = (Button)findViewById(R.id.btnload);
 		b.setOnClickListener(new OnClickListener() {
 			@Override
@@ -83,6 +92,7 @@ public class EditActivity extends Activity {
 					public void dispatchMessage(Message msg) {
 						Log.i("OPEN", msg.obj.toString());
 						startBMSLoad(msg.obj.toString());
+						ev.postInvalidate();
 						super.dispatchMessage(msg);
 					}
 				};
@@ -166,14 +176,19 @@ public class EditActivity extends Activity {
 					@Override
 					public void dispatchMessage(Message msg) {
 						try {
-							ComponentName cname = new ComponentName("com.kuna.rhythmus", "rhythmus.Main");
+							ComponentName cname = new ComponentName("com.kuna.rhythmus", "com.kuna.rhythmus.MainActivity");
 							
 							Intent intent = new Intent();
 							intent.setComponent(cname);
-							intent.putExtra("File", Program.bmsdata.dir + "__sample_sabuneditor.bme");
+							intent.putExtra("File", Program.bmsdata.dir + "__sample_sabuneditor.bme_");
+							Log.i("BEAT", Double.toString(Program.bmsdata.getBeatFromPosition(EditView.sizeOfBeat, ev.ScrollY).getBeat()));
+							intent.putExtra("Beat", Program.bmsdata.getBeatFromPosition(EditView.sizeOfBeat, ev.ScrollY).getBeat());
+							intent.putExtra("RemoveAfterPlay", true);
 							startActivity(intent);
 						} catch (Exception e) {
+							e.printStackTrace();
 							Toast.makeText(c, "no rhythmus BMS emulator found!", Toast.LENGTH_LONG).show();
+							new File(Program.bmsdata.dir + "__sample_sabuneditor.bme_").delete();
 						}
 						
 						super.dispatchMessage(msg);
@@ -181,7 +196,7 @@ public class EditActivity extends Activity {
 				};
 				
 				// store BMS first
-				startBMSSave(Program.bmsdata.dir + "__sample_sabuneditor.bme", h);
+				startBMSSave(Program.bmsdata.dir + "__sample_sabuneditor.bme_", h);
 			}
 		});
 
@@ -311,12 +326,13 @@ public class EditActivity extends Activity {
 				LoadingDialog.showDialog(c, "Loading BMS ...", "please wait");
 
 				// load file
-				BMSParser.LoadBMSFile(path, Program.bmsdata);
+				BMSData _bmsdata = new BMSData();
+				BMSParser.LoadBMSFile(path, _bmsdata);
 				
 				// fill posY data
-				Program.bmsdata.fillNotePosition( Program.bmsdata.bmsdata, 100, false);
-				Program.bmsdata.fillNotePosition( Program.bmsdata.bgadata, 100, false);
-				Program.bmsdata.fillNotePosition( Program.bmsdata.bgmdata, 100, false);
+				Program.bmsdata.fillNotePosition( _bmsdata.bmsdata, 100, false);
+				Program.bmsdata.fillNotePosition( _bmsdata.bgadata, 100, false);
+				Program.bmsdata.fillNotePosition( _bmsdata.bgmdata, 100, false);
 				
 				// clear history
 				EditHistory.initHistory();
@@ -330,6 +346,9 @@ public class EditActivity extends Activity {
 				
 				LoadingDialog.hideDialog();
 				h.obtainMessage().sendToTarget();	// invalidate
+				
+				// replace object
+				Program.bmsdata = _bmsdata;	// first, init.
 			}
 		}).start();
 	}

@@ -22,11 +22,19 @@ public class EditView extends View {
 	
 	public int ScrollX; // from bottom
 	public int ScrollY;
+	public int AccelX;
+	public int AccelY;
 
 	private Paint textDebugPaint;
 	
+	private Thread tScroll;
+	private boolean scrollWorking;
+	
+	View v;
+	
 	public EditView(Context c) {
 		super(c);
+		v = this;
 		
 		// init variables
 		viewWidth = 800;
@@ -39,6 +47,43 @@ public class EditView extends View {
 		
 		EditViewBackground.init();
 		EditViewNote.init(c);
+		
+		// scroll thread
+		scrollWorking = true;
+		tScroll = new Thread() {
+			public void run() {
+				while (scrollWorking) {
+					try {
+						// move Accl
+						if (lastEvent == MotionEvent.ACTION_UP) {
+							ScrollY += AccelY;
+							ScrollX += AccelX;
+							if (ScrollY < 0) ScrollY = 0;
+							if (ScrollX > 0) ScrollX = 0;
+							if (AccelY > 0)
+								AccelY--;
+							if (AccelY < 0)
+								AccelY ++;
+							if (AccelX > 0)
+								AccelX--;
+							if (AccelX < 0)
+								AccelX ++;
+						}
+					
+						Thread.sleep(30);
+					} catch (Exception e) {
+					}
+					v.postInvalidate();
+				}
+			};
+		};
+		tScroll.start();
+	}
+	
+	@Override
+	protected void onDetachedFromWindow() {
+		scrollWorking = false;
+		super.onDetachedFromWindow();
 	}
 	
 	@Override
@@ -79,6 +124,7 @@ public class EditView extends View {
 		//super.onDraw(canvas);
 	}
 	
+	private float px, py;		// previous position
 	private float sx, sy;
 	private int _sx, _sy;
 	private float zx, zy;		// standard of zooming
@@ -88,12 +134,14 @@ public class EditView extends View {
 	
 	private boolean moveSelected;
 	public static int moveX, moveY;
+	private int lastEvent;
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
 		super.onTouchEvent(event);
 		float x = event.getX(0);
 		float y = event.getY(0);
 		pointerCnt = event.getPointerCount();
+		lastEvent = event.getAction();
 		BMSKeyData rmData;
 		
 		// temp
@@ -147,6 +195,8 @@ public class EditView extends View {
 			case EditActivity.EDITMODE_MOVE:
 				if (pointerCnt == 2) {
 					ScrollY = ScrollY_backup;
+					if (AccelY < 10)
+						AccelY = 0;
 				}
 				break;
 			case EditActivity.EDITMODE_SELECT:
@@ -223,6 +273,8 @@ public class EditView extends View {
 					ScrollY = _sy + (int) (y - sy);
 					if (ScrollX > 0) ScrollX = 0;
 					if (ScrollY < 0) ScrollY = 0;
+					AccelY = (int) (y - py);
+					AccelX = (int) (x - px);
 				}
 				this.postInvalidate();
 				break;
@@ -235,13 +287,17 @@ public class EditView extends View {
 					moveY = (int)(moveY / (int)(sizeOfBeat / EditActivity.editBeat)) * (int)(sizeOfBeat / EditActivity.editBeat);
 				} else {
 					// add in selection
-					rmData = Program.bmsdata.getBeatFromPosition(sizeOfBeat, (int) (ScrollY+(viewHeight - y)));
+					//rmData = Program.bmsdata.getBeatFromPosition(sizeOfBeat, (int) (ScrollY+(viewHeight - y)));
+					rmData = new BMSKeyData();
 					col = EditViewNote.getColFromX((int) (x - ScrollX));
 					setChannelFromCol(rmData, col);
 					
-					BMSKeyData bkd = Program.bmsdata.getNote((int) rmData.getBeat(), rmData.getNumerator()
-							, rmData.getChannel(), rmData.getLayerNum());
-					SelectBMSKeyData.addBMSData(bkd);
+					for (BMSKeyData bkd: Program.bmsdata.bmsdata) {
+						if (Math.abs(bkd.getPosY(sizeOfBeat / 100.0) - (ScrollY+(viewHeight - y))) < 10)
+							SelectBMSKeyData.addBMSData(bkd);
+					}
+					/*BMSKeyData bkd = Program.bmsdata.getNote((int) rmData.getBeat(), rmData.getNumerator()
+							, rmData.getChannel(), rmData.getLayerNum());*/
 				}
 				this.postInvalidate();
 				break;
@@ -275,6 +331,8 @@ public class EditView extends View {
 			}
 		}
 		
+		px = x;
+		py = y;
 		return true;	// dont return event
 	}
 	

@@ -14,6 +14,23 @@ public class BMSUtil {
 		/* your customize part ! */
 		Log.i(title, desc);
 	}
+	
+	public static String CheckEncoding(byte[] BOM) {
+		if( (BOM[0] & 0xFF) == 0xEF && (BOM[1] & 0xFF) == 0xBB && (BOM[2] & 0xFF) == 0xBF )
+			return "UTF-8";
+		else if( (BOM[0] & 0xFF) == 0xFE && (BOM[1] & 0xFF) == 0xFF )
+			return "UTF-16BE";
+		else if( (BOM[0] & 0xFF) == 0xFF && (BOM[1] & 0xFF) == 0xFE )
+			return "UTF-16LE";
+		else if( (BOM[0] & 0xFF) == 0x00 && (BOM[1] & 0xFF) == 0x00 && 
+				(BOM[0] & 0xFF) == 0xFE && (BOM[1] & 0xFF) == 0xFF )
+			return "UTF-32BE";
+		else if( (BOM[0] & 0xFF) == 0xFF && (BOM[1] & 0xFF) == 0xFE && 
+				(BOM[0] & 0xFF) == 0x00 && (BOM[1] & 0xFF) == 0x00 )
+			return "UTF-32LE";
+		else
+			return "ANSI";
+	}
 
 	public static String GetHash(byte[] data) {
 		MessageDigest md;

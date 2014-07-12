@@ -32,7 +32,6 @@ public class BMSParser {
 	public static boolean LoadBMSFile(String path, BMSData bd) {
 		BMSUtil.Log("BMSParser", "Loading BMS File ... " + path);
 		File f = new File(path);
-		int locale;
 		
 		bd.path = path;
 		bd.dir = path.substring(0, path.length() - f.getName().length());
@@ -51,24 +50,36 @@ public class BMSParser {
 	        e.printStackTrace();
 	        return false;
 	    }
-		
+	    
 		// check locale
+		String locale = BMSUtil.CheckEncoding(bytes);
 	    String data;
-	    try {
-			locale = BMS_LOCALE_JP;
-			data = new String(bytes, "SHIFT_JIS");
-			byte[] b = data.getBytes();
-			for (int i=0; i< ((data.length()>1000)?1000:data.length()) ; i++) {
-				if (b[i] >= 44032 && b[i] <= 55203) {
-					locale = BMS_LOCALE_KR;
+	    
+	    if (locale.compareTo("ANSI") == 0) {
+		    try {
+		    	// attempt SHIFT_JIS first
+		    	// we also can use https://github.com/hnakamur/sjis-check,
+		    	// but it may be too much slow in mobile device.
+				data = new String(bytes, "SHIFT_JIS");
+				byte[] b = data.getBytes();
+				for (int i=0; i< ((data.length()>1000)?1000:data.length()) ; i++) {
+					if (b[i] >= 44032 && b[i] <= 55203) {
+						// EUC-KR encoding
+						data = new String(bytes, "CP949");
+						break;
+					}
 				}
+		    } catch (UnsupportedEncodingException e) {
+		    	BMSUtil.Log("BMSParser", "Unsupported Encoding Exception");
+		    	return false;
+		    }
+	    } else {
+	    	try {
+				data = new String(bytes, locale);
+			} catch (UnsupportedEncodingException e) {
+		    	BMSUtil.Log("BMSParser", "Unsupported Encoding Exception");
+		    	return false;
 			}
-			if (locale == BMS_LOCALE_KR) {
-				data = new String(bytes, "CP949");
-			}
-	    } catch (UnsupportedEncodingException e) {
-	    	BMSUtil.Log("BMSParser", "Unsupported Encoding Exception");
-	    	return false;
 	    }
 		
 		bd.hash = BMSUtil.GetHash(bytes);
@@ -100,7 +111,8 @@ public class BMSParser {
 		bd.bgmdata.clear();
 		bd.bgadata.clear();
 		
-		String[] lines = data.split("\r\n");
+		data = data.replace("\r\n", "\n");
+		String[] lines = data.split("\n");
 
 		for (int i=0; i<lines.length; i++) {
 			PreProcessBMSLine(lines[i].trim(), bd);
